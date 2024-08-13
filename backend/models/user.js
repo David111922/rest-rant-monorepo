@@ -15,11 +15,14 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.SMALLINT,
       primaryKey: true,
       autoIncrement: true
-
     },
     firstName: DataTypes.STRING,
     lastName: DataTypes.STRING,
-    email: DataTypes.STRING
+    email: DataTypes.STRING,
+    passwordDigest: {
+      type: DataTypes.STRING,
+      field: 'password_digest' // This ensures Sequelize maps this field to the correct column in the database
+    }
   }, {
     sequelize,
     underscored: true,
