@@ -4,6 +4,10 @@ const db = require("../models")
 const { Place, Comment, User } = db
 
 router.post('/', async (req, res) => {
+
+    if(req.currentUser?.role !== 'admin'){
+        return res.status(403).json({ message: 'You are not allowed to add a place'})
+    }
     if (!req.body.pic) {
         req.body.pic = 'http://placekitten.com/400/400'
     }
@@ -80,10 +84,11 @@ router.delete('/:placeId', async (req, res) => {
         }
     }
 })
+  
 
 router.post('/:placeId/comments', async (req, res) => {
     const placeId = Number(req.params.placeId)
-
+    console.log("Received placeId:", placeId) 
     req.body.rant = req.body.rant ? true : false
 
     const place = await Place.findOne({
@@ -91,25 +96,39 @@ router.post('/:placeId/comments', async (req, res) => {
     })
 
     if (!place) {
-        res.status(404).json({ message: `Could not find place with id "${placeId}"` })
+        return res.status(404).json({ message: `Could not find place with id "${placeId}"` })
     }
 
-    const author = await User.findOne({
-        where: { userId: req.body.authorId }
-    })
-
-    if (!author) {
-        res.status(404).json({ message: `Could not find author with id "${req.body.authorId}"` })
+    let currentUser;
+    try {
+        const [method, token] = req.headers.authorization.split(' ')
+        if (method == 'Bearer') {
+            const result = await jwt.decode(process.env.JWT_SECRET, token)
+            const { id } = result.value
+            currentUser = await User.findOne({
+                where: {
+                    userId: id 
+                }
+            })
+        }
+    } catch {
+        currentUser = null
     }
-
+    
+    if (!currentUser) {
+        return res.status(401).json({
+            message: `You must be logged in to leave a rant or rave.`
+        });
+    }
     const comment = await Comment.create({
         ...req.body,
+        authorId: currentUser.userId,
         placeId: placeId
     })
-
+console.log(comment)
     res.send({
         ...comment.toJSON(),
-        author
+        author: currentUser
     })
 })
 
